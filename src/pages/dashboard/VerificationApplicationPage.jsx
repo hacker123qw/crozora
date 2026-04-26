@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { CheckCircle, Upload, FileText, ChevronRight } from 'lucide-react';
+import { CheckCircle, Upload, ChevronRight } from 'lucide-react';
 
 const statuses = ['Draft', 'Submitted', 'Under review', 'Approved', 'Rejected'];
 

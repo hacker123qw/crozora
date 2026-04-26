@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { User, Globe, Bell, Lock, Trash2, Eye } from 'lucide-react';
+import { User, Globe, Bell, Lock, Trash2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('account');

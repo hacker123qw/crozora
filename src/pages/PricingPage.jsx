@@ -35,14 +35,13 @@ const plans = [
     included: [
       'Badge access for this website if approved',
       'Public trust page for this website if approved',
-      'Basic site report',
-      'Basic explanation of pass/fail',
-      'Basic improvement suggestions',
-      'Basic recheck guidance',
+      'Advanced site report for this website',
+      'Detailed explanation of pass/fail',
+      'Advanced improvement suggestions',
+      'Recheck guidance for this website',
     ],
     notIncluded: [
       'Multiple websites',
-      'Advanced technical guidance',
       'Ongoing monitoring across websites',
       'Full Pro dashboard access',
     ],

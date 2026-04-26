@@ -1,6 +1,7 @@
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from '@/lib/AuthContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Public pages
 import HomePage from '@/pages/HomePage';
@@ -26,17 +27,7 @@ import DisclaimerPage from '@/pages/legal/DisclaimerPage';
 import OnboardingWizard from '@/pages/onboarding/OnboardingWizard';
 
 // Dashboard pages
-import DashboardOverview from '@/pages/dashboard/DashboardOverview';
 import MainDashboard from '@/pages/dashboard/MainDashboard';
-import AddBusinessPage from '@/pages/dashboard/AddBusinessPage';
-import OwnershipPage from '@/pages/dashboard/OwnershipPage';
-import TrustScanPage from '@/pages/dashboard/TrustScanPage';
-import PrivateReportPage from '@/pages/dashboard/PrivateReportPage';
-import VerificationApplicationPage from '@/pages/dashboard/VerificationApplicationPage';
-import BadgeSetupPage from '@/pages/dashboard/BadgeSetupPage';
-import PublicPreviewPage from '@/pages/dashboard/PublicPreviewPage';
-import BillingPage from '@/pages/dashboard/BillingPage';
-import SettingsPage from '@/pages/dashboard/SettingsPage';
 
 // Admin pages
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -46,11 +37,12 @@ import AdminBadges from '@/pages/admin/AdminBadges';
 import AdminReports from '@/pages/admin/AdminReports';
 import AdminUsers from '@/pages/admin/AdminUsers';
 
-const queryClient = new QueryClient();
+const loginRedirect = <Navigate to="/login" replace />;
+const dashboardRedirect = (section) => <Navigate to={`/dashboard/home?section=${section}`} replace />;
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <AuthProvider>
       <Router>
         <Routes>
           {/* Public */}
@@ -73,34 +65,36 @@ function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/disclaimer" element={<DisclaimerPage />} />
 
-          {/* Onboarding wizard — also the default entry for new users */}
-          <Route path="/onboarding" element={<OnboardingWizard />} />
-          <Route path="/start" element={<OnboardingWizard />} />
+          <Route element={<ProtectedRoute unauthenticatedElement={loginRedirect} />}>
+            {/* Onboarding wizard, also the default entry for new users */}
+            <Route path="/onboarding" element={<OnboardingWizard />} />
+            <Route path="/start" element={<OnboardingWizard />} />
 
-          {/* Dashboard */}
-          <Route path="/dashboard" element={<DashboardOverview />} />
-          <Route path="/dashboard/home" element={<MainDashboard />} />
-          <Route path="/dashboard/add-business" element={<AddBusinessPage />} />
-          <Route path="/dashboard/ownership" element={<OwnershipPage />} />
-          <Route path="/dashboard/scan" element={<TrustScanPage />} />
-          <Route path="/dashboard/report" element={<PrivateReportPage />} />
-          <Route path="/dashboard/apply" element={<VerificationApplicationPage />} />
-          <Route path="/dashboard/badge" element={<BadgeSetupPage />} />
-          <Route path="/dashboard/public-preview" element={<PublicPreviewPage />} />
-          <Route path="/dashboard/billing" element={<BillingPage />} />
-          <Route path="/dashboard/settings" element={<SettingsPage />} />
+            {/* Dashboard */}
+            <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
+            <Route path="/dashboard/home" element={<MainDashboard />} />
+            <Route path="/dashboard/add-business" element={dashboardRedirect('websites')} />
+            <Route path="/dashboard/ownership" element={dashboardRedirect('websites')} />
+            <Route path="/dashboard/scan" element={dashboardRedirect('report')} />
+            <Route path="/dashboard/report" element={dashboardRedirect('report')} />
+            <Route path="/dashboard/apply" element={dashboardRedirect('report')} />
+            <Route path="/dashboard/badge" element={dashboardRedirect('badge')} />
+            <Route path="/dashboard/public-preview" element={dashboardRedirect('public')} />
+            <Route path="/dashboard/billing" element={dashboardRedirect('billing')} />
+            <Route path="/dashboard/settings" element={dashboardRedirect('settings')} />
 
-          {/* Admin */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/reviews" element={<AdminReviewQueue />} />
-          <Route path="/admin/scan-logs" element={<AdminScanLogs />} />
-          <Route path="/admin/badges" element={<AdminBadges />} />
-          <Route path="/admin/reports" element={<AdminReports />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
+            {/* Admin */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/reviews" element={<AdminReviewQueue />} />
+            <Route path="/admin/scan-logs" element={<AdminScanLogs />} />
+            <Route path="/admin/badges" element={<AdminBadges />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+          </Route>
         </Routes>
       </Router>
       <Toaster />
-    </QueryClientProvider>
+    </AuthProvider>
   );
 }
 

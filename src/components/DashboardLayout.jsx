@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
 import {
   Shield, LayoutDashboard, PlusCircle, Globe, ScanLine, FileText,
   Award, Eye, CreditCard, Settings, LogOut, Menu, X
@@ -20,7 +21,7 @@ const navItems = [
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const isActive = (path) => location.pathname === path;
 
@@ -75,7 +76,7 @@ export default function DashboardLayout({ children }) {
         {/* Logout */}
         <div className="absolute bottom-0 left-0 right-0 p-4" style={{ borderTop: '1px solid rgba(59,130,246,0.1)' }}>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => logout()}
             className="sidebar-item w-full"
           >
             <LogOut size={16} />

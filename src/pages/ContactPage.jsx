@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import CrozoraNav from '@/components/CrozoraNav';
 import CrozoraFooter from '@/components/CrozoraFooter';
-import { Mail, CheckCircle, Award, Globe, CreditCard, AlertTriangle, Shield, HelpCircle } from 'lucide-react';
+import { Mail, CheckCircle, Award, Globe, CreditCard, AlertTriangle, Shield } from 'lucide-react';
 
 const helpTopics = [
   { icon: Award, title: 'Badge Installation Help', desc: 'Step-by-step guidance for installing your badge on any platform.' },

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Globe, ChevronRight, ArrowRight } from 'lucide-react';
+import { Globe, ArrowRight } from 'lucide-react';
 
 export default function AddBusinessPage() {
   const navigate = useNavigate();

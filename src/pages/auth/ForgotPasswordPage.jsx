@@ -1,67 +1,138 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, CheckCircle, ArrowLeft } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Mail,
+  RotateCcw,
+} from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import {
+  AuthButton,
+  AuthInput,
+  AuthNotice,
+  AuthShell,
+} from '@/components/auth/AuthShell';
 
 export default function ForgotPasswordPage() {
+  const { resetPassword, authError } = useAuth();
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
+  const redirectTo = useMemo(() => `${window.location.origin}/verify-email?mode=recovery`, []);
+
+  const handleReset = async () => {
+    setSubmitError('');
+
+    if (!email) {
+      setSubmitError('Enter your email address.');
+      return;
+    }
+
+    const { error } = await resetPassword({
+      email,
+      redirectTo,
+    });
+
+    if (error) {
+      setSubmitError(error.message || 'Unable to send reset email.');
+      return;
+    }
+
+    localStorage.setItem('crozora_pending_verification_email', email);
+    setSubmitted(true);
+  };
+
+  const currentError = submitError || authError?.message;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 grid-pattern" style={{ background: '#050b18' }}>
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)' }}>
-              <Shield size={18} className="text-white" />
-            </div>
-            <span className="text-white font-space font-bold text-2xl">Crozora</span>
+    <AuthShell
+      eyebrow="Reset password"
+      title={submitted ? 'Check your email' : 'Forgot your password?'}
+      description={submitted
+        ? 'If an account exists for this email, we sent you a password reset link.'
+        : 'Enter your email address and we will send you a link to reset your password.'}
+      footer={(
+        <p className="text-sm text-slate-400">
+          Remembered your password?{' '}
+          <Link to="/login" className="font-semibold text-cyan-300 transition hover:text-cyan-200">
+            Back to sign in
           </Link>
-          <h1 className="text-3xl font-space font-bold text-white mt-6 mb-2">Reset Password</h1>
-          <p className="text-sm" style={{ color: 'rgba(148,163,184,0.6)' }}>Enter your email to receive reset instructions</p>
-        </div>
+        </p>
+      )}
+    >
+      {submitted ? (
+        <div className="space-y-5">
+          <div className="rounded-[1.75rem] border border-emerald-300/20 bg-emerald-400/10 p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-300">
+                <CheckCircle2 size={24} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Email sent</h2>
+                <p className="mt-2 text-sm leading-7 text-emerald-100/90">
+                  If an account exists for <span className="font-semibold text-white">{email}</span>, reset instructions will arrive shortly.
+                </p>
+              </div>
+            </div>
+          </div>
 
-        <div className="glass-card rounded-2xl p-8" style={{ border: '1px solid rgba(59,130,246,0.15)' }}>
-          {submitted ? (
-            <div className="text-center py-6">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)' }}>
-                <CheckCircle size={24} className="text-emerald-400" />
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">Check your email</h3>
-              <p className="text-sm mb-6" style={{ color: 'rgba(148,163,184,0.7)' }}>
-                If an account exists for <span className="text-white">{email}</span>, reset instructions will be sent.
-              </p>
-              <Link to="/login" className="text-sm text-blue-400 hover:text-blue-300">Back to login</Link>
-            </div>
-          ) : (
-            <div>
-              <div className="mb-4">
-                <label className="text-xs text-slate-500 mb-1 block">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-600 outline-none focus:ring-1 focus:ring-blue-500/40"
-                  style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)' }}
-                />
-              </div>
-              <button
-                onClick={() => setSubmitted(true)}
-                className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90"
-                style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)' }}
-              >
-                Send Reset Instructions
-              </button>
-              <div className="text-center mt-4">
-                <Link to="/login" className="text-xs text-slate-500 hover:text-slate-400 flex items-center justify-center gap-1">
-                  <ArrowLeft size={12} /> Back to login
-                </Link>
-              </div>
-            </div>
-          )}
+          <AuthNotice tone="success" title="Next step">
+            Open the email and use the link to choose a new password.
+          </AuthNotice>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <AuthButton secondary onClick={() => setSubmitted(false)} className="sm:flex-1">
+              <RotateCcw size={16} />
+              Use another email
+            </AuthButton>
+            <Link to="/login" className="sm:flex-1">
+              <AuthButton className="sm:flex-1">
+                Back to login
+                <ArrowRight size={16} />
+              </AuthButton>
+            </Link>
+          </div>
         </div>
-      </div>
-    </div>
+      ) : (
+        <div className="space-y-5">
+          <AuthInput
+            label="Email address"
+            type="email"
+            autoComplete="email"
+            placeholder="you@business.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleReset()}
+            trailing={<Mail size={16} className="text-slate-500" />}
+          />
+
+          {currentError ? (
+            <AuthNotice tone="error" title="Could not send reset email">
+              {currentError}
+            </AuthNotice>
+          ) : (
+            <AuthNotice tone="neutral" title="Reset link">
+              If an account exists for this email address, a reset link will be sent.
+            </AuthNotice>
+          )}
+
+          <AuthButton onClick={handleReset}>
+            Send reset link
+            <ArrowRight size={16} />
+          </AuthButton>
+
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-slate-200"
+          >
+            <ArrowLeft size={16} />
+            Back to login
+          </Link>
+        </div>
+      )}
+    </AuthShell>
   );
 }

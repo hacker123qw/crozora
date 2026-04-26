@@ -1,9 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, Globe, ScanLine, Award, Copy, CheckCircle,
   RefreshCw, AlertTriangle, Zap, ArrowRight, Lock, AlertCircle, Building2, ChevronRight, X
 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { createBusiness } from '@/services/businesses';
+import { createWebsite } from '@/services/websites';
+import { createSiteReport } from '@/services/reports';
+import {
+  buildVerificationRecord,
+  checkDomainVerification,
+  createDomainVerification,
+  getLatestDomainVerification,
+} from '@/services/domainVerification';
+import {
+  createTrustScan,
+  runFreePreviewScan,
+  updateTrustScan,
+} from '@/services/trustScans';
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 function WizardShell({ step, children }) {
@@ -144,7 +159,7 @@ const CATEGORIES = ['Local Service Business', 'E-commerce', 'Professional Servic
 const BUILDERS = ['Wix', 'Squarespace', 'WordPress', 'Shopify', 'GoDaddy', 'Webflow', 'Base44', 'Custom website', "Other / I don't know"];
 const SERVICE_TYPES = ['Online only', 'In-person only', 'Both online and in-person'];
 
-function StepBusinessInfo({ onNext, data, setData }) {
+function StepBusinessInfo({ onNext, data, setData, isSaving, saveError }) {
   const [form, setForm] = useState({
     name: data.name || '', email: data.email || '', category: data.category || '',
     builder: data.builder || '', country: data.country || '', state: data.state || '',
@@ -158,7 +173,11 @@ function StepBusinessInfo({ onNext, data, setData }) {
   const inputStyle = { background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' };
   const selStyle = (val) => ({ background: 'rgba(5,11,24,0.9)', border: '1px solid rgba(59,130,246,0.2)', color: val ? '#e2e8f0' : '#475569' });
 
-  const handleContinue = () => { setData({ ...data, ...form }); onNext(); };
+  const handleContinue = () => {
+    const nextData = { ...data, ...form };
+    setData(nextData);
+    onNext(nextData);
+  };
 
   return (
     <WizardShell step={2}>
@@ -251,10 +270,17 @@ function StepBusinessInfo({ onNext, data, setData }) {
           </div>
         )}
 
-        <button onClick={handleContinue}
+        {saveError ? (
+          <div className="mb-4 rounded-xl px-4 py-3 text-sm text-red-100"
+            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            {saveError}
+          </div>
+        ) : null}
+
+        <button onClick={handleContinue} disabled={isSaving}
           className="w-full py-3.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)', boxShadow: '0 0 20px rgba(59,130,246,0.25)' }}>
-          Continue <ArrowRight size={15} />
+          style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)', boxShadow: '0 0 20px rgba(59,130,246,0.25)', opacity: isSaving ? 0.7 : 1 }}>
+          {isSaving ? <><RefreshCw size={15} className="animate-spin" /> Saving business details...</> : <>Continue <ArrowRight size={15} /></>}
         </button>
       </div>
     </WizardShell>
@@ -262,15 +288,53 @@ function StepBusinessInfo({ onNext, data, setData }) {
 }
 
 // ─── Step 3: DNS ──────────────────────────────────────────────────────────────
-function StepDNS({ onNext, data }) {
-  const [verified, setVerified] = useState(false);
+function StepDNS({ onNext, data, verificationRecord, onVerify }) {
+  const [verified, setVerified] = useState(data.ownershipVerified || false);
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(null);
-  const domain = data.url || 'example.com';
-  const dnsName = `_crozora.${domain}`;
-  const dnsValue = 'crozora_verify_7K92XQ';
-  const copy = (key, val) => { navigator.clipboard.writeText(val); setCopied(key); setTimeout(() => setCopied(null), 2000); };
-  const check = () => { setChecking(true); setTimeout(() => { setChecking(false); setVerified(true); }, 1800); };
+  const [lookupMessage, setLookupMessage] = useState('');
+  const [lookupError, setLookupError] = useState('');
+  const domain = verificationRecord?.normalizedDomain || data.url || 'example.com';
+  const dnsName = verificationRecord?.dns_name || verificationRecord?.dnsName || `_crozora.${domain}`;
+  const dnsValue = verificationRecord?.expected_value || verificationRecord?.expectedValue || 'crozora_verify_xxxxx';
+
+  const copy = (key, val) => {
+    navigator.clipboard.writeText(val);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const check = async () => {
+    if (!verificationRecord) {
+      return;
+    }
+
+    setChecking(true);
+    setLookupMessage('');
+    setLookupError('');
+
+    try {
+      const result = await checkDomainVerification({
+        verificationId: verificationRecord.id,
+        websiteId: data.websiteId,
+      });
+
+      if (result.matched) {
+        if (result?.verification && onVerify) {
+          onVerify(result.verification);
+        }
+        setVerified(true);
+        setLookupMessage('We found the TXT record. Your website ownership is now confirmed.');
+      } else {
+        setLookupMessage('We checked live DNS, but the record is not visible yet. DNS updates can take some time to appear.');
+      }
+    } catch (error) {
+      setLookupError(error.message || 'We could not check DNS right now. Please try again in a moment.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
   const rows = [
     { label: 'Type', value: 'TXT', key: 'type' },
     { label: 'Name', value: dnsName, key: 'name', copyable: true },
@@ -289,6 +353,15 @@ function StepDNS({ onNext, data }) {
           </div>
         </div>
         <p className="text-sm text-slate-400">Add this DNS TXT record to prove you control <span className="text-blue-300 font-mono">{domain}</span>.</p>
+        <div className="rounded-xl p-4" style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)' }}>
+          <p className="text-sm text-slate-300 font-medium mb-2">Easy version:</p>
+          <ol className="space-y-2 text-sm text-slate-400 list-decimal pl-5">
+            <li>Open the place where you bought your domain, like GoDaddy or Namecheap.</li>
+            <li>Find the page called DNS, Domain Settings, or DNS Records.</li>
+            <li>Add a new record and copy the Name and Value exactly as shown below.</li>
+            <li>Save it, then come back here and click <span className="text-white font-medium">Check Verification</span>.</li>
+          </ol>
+        </div>
         <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(59,130,246,0.18)' }}>
           {rows.map(({ label, value, key, copyable }) => (
             <div key={key} className="flex items-center justify-between px-4 py-3"
@@ -316,12 +389,24 @@ function StepDNS({ onNext, data }) {
             </div>
           </div>
         ) : (
-          <button onClick={check} disabled={checking}
+          <button onClick={check} disabled={checking || !verificationRecord}
             className="w-full py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-60"
             style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)' }}>
-            {checking ? <><RefreshCw size={14} className="animate-spin" /> Checking DNS…</> : 'Check Verification'}
+            {checking ? <><RefreshCw size={14} className="animate-spin" /> Checking live DNS...</> : 'Check Verification'}
           </button>
         )}
+        {lookupMessage ? (
+          <div className="rounded-xl px-4 py-3 text-sm text-slate-200"
+            style={{ background: verified ? 'rgba(16,185,129,0.08)' : 'rgba(59,130,246,0.06)', border: `1px solid ${verified ? 'rgba(16,185,129,0.2)' : 'rgba(59,130,246,0.16)'}` }}>
+            {lookupMessage}
+          </div>
+        ) : null}
+        {lookupError ? (
+          <div className="rounded-xl px-4 py-3 text-sm text-red-100"
+            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.22)' }}>
+            {lookupError}
+          </div>
+        ) : null}
         <div className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)' }}>
           <AlertTriangle size={13} className="text-amber-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-slate-500">DNS changes may take a few minutes to several hours to appear.</p>
@@ -345,15 +430,94 @@ function StepScan({ onNext, data }) {
   const [phase, setPhase] = useState('idle');
   const [completed, setCompleted] = useState([]);
   const [progress, setProgress] = useState(0);
-  const start = () => {
+  const [scanError, setScanError] = useState('');
+
+  const start = async () => {
+    if (!data.websiteId || !data.businessId) {
+      setScanError('Please finish the website setup first.');
+      return;
+    }
+
+    setScanError('');
     setPhase('scanning'); setCompleted([]);
-    SCAN_ITEMS.forEach((_, i) => {
-      setTimeout(() => {
-        setCompleted(prev => [...prev, i]);
-        setProgress(Math.round(((i + 1) / SCAN_ITEMS.length) * 100));
-        if (i === SCAN_ITEMS.length - 1) setTimeout(() => setPhase('done'), 400);
-      }, (i + 1) * 600);
-    });
+    setProgress(0);
+
+    try {
+      const scan = await createTrustScan({
+        websiteId: data.websiteId,
+        ownerId: data.userId,
+        scanType: 'free_preview',
+        status: 'running',
+        rawScanData: {
+          domain: data.url,
+          businessName: data.name,
+        },
+      });
+
+      const animationPromise = new Promise((resolve) => {
+        SCAN_ITEMS.forEach((_, i) => {
+          setTimeout(() => {
+            setCompleted((prev) => [...prev, i]);
+            setProgress(Math.round(((i + 1) / SCAN_ITEMS.length) * 100));
+            if (i === SCAN_ITEMS.length - 1) {
+              resolve();
+            }
+          }, (i + 1) * 600);
+        });
+      });
+
+      const scanPromise = runFreePreviewScan({
+        websiteId: data.websiteId,
+        websiteUrl: `https://${data.url}`,
+        domain: data.url,
+        businessName: data.name,
+        businessEmail: data.email,
+        category: data.category,
+        serviceType: data.serviceType,
+        country: data.country,
+        stateRegion: data.state,
+        city: data.city,
+        contactUrl: data.contactUrl,
+        privacyUrl: data.privacyUrl,
+        termsUrl: data.termsUrl,
+        reviewUrl: data.reviewUrl,
+        ownershipVerified: data.ownershipVerified,
+      });
+
+      const [artifacts] = await Promise.all([scanPromise, animationPromise]);
+
+      const completedScan = await updateTrustScan(scan.id, {
+        status: 'completed',
+        overall_status: artifacts.overallStatus,
+        findings: artifacts.findings,
+        raw_scan_data: artifacts.rawScanData || {
+          domain: data.url,
+          businessName: data.name,
+        },
+        completed_at: new Date().toISOString(),
+      });
+
+      const report = await createSiteReport({
+        websiteId: data.websiteId,
+        ownerId: data.userId,
+        ...artifacts.report,
+      });
+
+      const nextData = {
+        ...data,
+        previewResult: completedScan.overall_status,
+        previewStatus: 'complete',
+        latestScanId: completedScan.id,
+        latestReportId: report.id,
+      };
+
+      sessionStorage.setItem('crozora_biz', JSON.stringify(nextData));
+      onNext(nextData);
+      setPhase('done');
+    } catch (error) {
+      setPhase('idle');
+      setScanError(error.message || 'We could not start the preview scan.');
+    }
   };
   return (
     <WizardShell step={4}>
@@ -402,13 +566,12 @@ function StepScan({ onNext, data }) {
             <Zap size={15} /> Start Preview Scan
           </button>
         )}
-        {phase === 'done' && (
-          <button onClick={onNext}
-            className="w-full py-3.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)', boxShadow: '0 0 20px rgba(59,130,246,0.25)' }}>
-            View Preview Result <ArrowRight size={15} />
-          </button>
-        )}
+        {scanError ? (
+          <div className="rounded-xl px-4 py-3 text-sm text-red-100"
+            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.22)' }}>
+            {scanError}
+          </div>
+        ) : null}
       </div>
     </WizardShell>
   );
@@ -446,8 +609,13 @@ const PREVIEW_RESULTS = {
 };
 
 function StepResult({ onDone, data }) {
-  const [active, setActive] = useState('passed');
   const [showModal, setShowModal] = useState(false);
+  const statusMap = {
+    looks_promising: 'passed',
+    needs_improvement: 'failed',
+    needs_closer_review: 'review',
+  };
+  const active = statusMap[data.previewResult] || 'passed';
   const r = PREVIEW_RESULTS[active];
   const ResultIcon = r.icon;
   const name = data.name || data.url || 'Your Business';
@@ -477,24 +645,6 @@ function StepResult({ onDone, data }) {
           <Building2 size={12} className="text-blue-400" />
           <span className="text-xs text-slate-400">{name}</span>
           {domain && <><span className="text-xs text-slate-600 mx-1">·</span><span className="text-xs font-mono text-blue-300">{domain}</span></>}
-        </div>
-
-        {/* Demo switcher */}
-        <div className="p-2 rounded-lg" style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.15)' }}>
-          <p className="text-xs text-violet-400 font-medium mb-1.5 px-1">Prototype View — result states:</p>
-          <div className="flex gap-2 flex-wrap">
-            {Object.entries(PREVIEW_RESULTS).map(([key, val]) => (
-              <button key={key} onClick={() => setActive(key)}
-                className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
-                style={{
-                  background: active === key ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.05)',
-                  border: active === key ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(139,92,246,0.1)',
-                  color: active === key ? '#c4b5fd' : 'rgba(196,181,253,0.4)',
-                }}>
-                {key === 'passed' ? 'Passed' : key === 'failed' ? 'Did Not Pass' : 'Needs Review'}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Result card */}
@@ -550,7 +700,7 @@ function PlanModal({ onClose, domain }) {
               <span className="text-slate-500 text-sm">one-time</span>
               <span className="text-sm font-semibold text-white ml-1">One-Time Site Verification</span>
             </div>
-            <p className="text-xs text-slate-400">Covers this website only. Badge access if approved, basic report, public trust page if approved.</p>
+            <p className="text-xs text-slate-400">Covers this website only. Badge access if approved, advanced report, public trust page if approved.</p>
           </div>
           <div className="p-5 rounded-xl cursor-pointer hover:-translate-y-0.5 transition-all"
             style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)' }}>
@@ -571,16 +721,194 @@ function PlanModal({ onClose, domain }) {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function OnboardingWizard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
-  const [data, setData] = useState({});
+  const [data, setData] = useState(() => /** @type {Record<string, any>} */ ({}));
+  const [isSavingBusiness, setIsSavingBusiness] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [verificationRecord, setVerificationRecord] = useState(null);
   const next = () => setStep(s => s + 1);
   const finish = () => navigate('/dashboard/home');
 
+  useEffect(() => {
+    let active = true;
+
+    if (!user) {
+      return;
+    }
+
+    const restoreSavedState = async () => {
+      try {
+        const saved = sessionStorage.getItem('crozora_biz');
+        if (!saved) {
+          return;
+        }
+
+        const parsed = JSON.parse(saved);
+        if (!active) {
+          return;
+        }
+
+        setData(prev => ({ ...parsed, ...prev }));
+
+        if (!parsed?.websiteId) {
+          return;
+        }
+
+        const latestVerification = await getLatestDomainVerification(parsed.websiteId).catch(() => null);
+        if (!latestVerification || !active) {
+          return;
+        }
+
+        const normalizedDomain = parsed.normalizedDomain
+          || parsed.url
+          || latestVerification.dns_name?.replace(/^_crozora\./, '')
+          || 'example.com';
+
+        setVerificationRecord({
+          ...latestVerification,
+          normalizedDomain,
+          dnsName: latestVerification.dns_name,
+          expectedValue: latestVerification.expected_value,
+        });
+      } catch {
+        // keep onboarding resilient if legacy session data is malformed
+      }
+    };
+
+    restoreSavedState();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const persistBusinessAndWebsite = async (nextData) => {
+    if (!user) {
+      throw new Error('Please sign in again before continuing.');
+    }
+
+    if (nextData.businessId && nextData.websiteId) {
+      const existingVerification = await getLatestDomainVerification(nextData.websiteId).catch(() => null);
+
+      if (existingVerification) {
+        const persistedExisting = {
+          ...nextData,
+          ownershipVerificationId: existingVerification.id,
+          normalizedDomain: nextData.normalizedDomain || nextData.url,
+        };
+
+        sessionStorage.setItem('crozora_biz', JSON.stringify(persistedExisting));
+        setVerificationRecord({
+          ...existingVerification,
+          normalizedDomain: persistedExisting.normalizedDomain,
+          dnsName: existingVerification.dns_name,
+          expectedValue: existingVerification.expected_value,
+        });
+        setData(persistedExisting);
+        return;
+      }
+    }
+
+    const serviceTypeMap = {
+      'Online only': 'online',
+      'In-person only': 'in_person',
+      'Both online and in-person': 'both',
+    };
+
+    const verificationDraft = buildVerificationRecord(nextData.url);
+
+    const business = await createBusiness({
+      ownerId: user.id,
+      businessName: nextData.name || verificationDraft.normalizedDomain,
+      businessEmail: nextData.email,
+      category: nextData.category,
+      serviceType: serviceTypeMap[nextData.serviceType] || 'online',
+      country: nextData.country,
+      stateRegion: nextData.state,
+      city: nextData.city,
+    });
+
+    const website = await createWebsite({
+      ownerId: user.id,
+      businessId: business.id,
+      rawUrl: nextData.url,
+      websiteBuilder: nextData.builder,
+      contactPageUrl: nextData.contactUrl,
+      privacyPolicyUrl: nextData.privacyUrl,
+      termsPolicyUrl: nextData.termsUrl,
+      reviewProfileUrl: nextData.reviewUrl,
+      ownershipStatus: 'pending',
+      previewStatus: 'not_started',
+      verificationStatus: 'not_started',
+      badgeStatus: 'unavailable',
+      publicPageStatus: 'inactive',
+      planCoverage: 'free',
+    });
+
+    const verification = await createDomainVerification({
+      ownerId: user.id,
+      websiteId: website.id,
+      rawUrl: nextData.url,
+      record: verificationDraft,
+    });
+
+    const persisted = {
+      ...nextData,
+      businessId: business.id,
+      websiteId: website.id,
+      ownershipVerificationId: verification.id,
+      ownershipVerified: false,
+      normalizedDomain: website.normalized_domain,
+    };
+
+    sessionStorage.setItem('crozora_biz', JSON.stringify(persisted));
+    setVerificationRecord({
+      ...verification,
+      normalizedDomain: website.normalized_domain,
+      dnsName: verification.dns_name,
+      expectedValue: verification.expected_value,
+    });
+    setData(persisted);
+  };
+
+  const handleBusinessNext = async (nextData) => {
+    try {
+      setIsSavingBusiness(true);
+      setSaveError('');
+      await persistBusinessAndWebsite(nextData);
+      next();
+    } catch (error) {
+      setSaveError(error.message || 'We could not save your website details yet.');
+    } finally {
+      setIsSavingBusiness(false);
+    }
+  };
+
+  const handleOwnershipVerified = (latestVerification = null) => {
+    const nextData = {
+      ...data,
+      ownershipVerified: true,
+    };
+
+    sessionStorage.setItem('crozora_biz', JSON.stringify(nextData));
+    setData(nextData);
+
+    if (latestVerification) {
+      setVerificationRecord((previous) => ({
+        ...(previous || {}),
+        ...latestVerification,
+        dnsName: latestVerification.dns_name || latestVerification.dnsName,
+        expectedValue: latestVerification.expected_value || latestVerification.expectedValue,
+      }));
+    }
+  };
+
   if (step === 0) return <StepWelcome onNext={next} />;
   if (step === 1) return <StepWebsite onNext={next} data={data} setData={setData} />;
-  if (step === 2) return <StepBusinessInfo onNext={next} data={data} setData={setData} />;
-  if (step === 3) return <StepDNS onNext={next} data={data} />;
-  if (step === 4) return <StepScan onNext={next} data={data} />;
+  if (step === 2) return <StepBusinessInfo onNext={handleBusinessNext} data={data} setData={setData} isSaving={isSavingBusiness} saveError={saveError} />;
+  if (step === 3) return <StepDNS onNext={next} data={data} verificationRecord={verificationRecord} onVerify={handleOwnershipVerified} />;
+  if (step === 4) return <StepScan onNext={(nextData) => { setData(nextData); next(); }} data={{ ...data, userId: user?.id }} />;
   if (step === 5) return <StepResult onDone={finish} data={data} />;
   return null;
 }

@@ -1,17 +1,99 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { CheckCircle, Copy, AlertTriangle, Globe, ArrowRight, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { getLatestWebsiteForOwner } from '@/services/websites';
+import {
+  checkDomainVerification,
+  getLatestDomainVerification,
+} from '@/services/domainVerification';
 
 export default function OwnershipPage() {
+  const { user } = useAuth();
   const [verified, setVerified] = useState(false);
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(null);
+  const [verification, setVerification] = useState(null);
+  const [website, setWebsite] = useState(null);
+  const [lookupMessage, setLookupMessage] = useState('');
+  const [lookupError, setLookupError] = useState('');
   const navigate = useNavigate();
 
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      if (!user?.id) {
+        return;
+      }
+
+      const latestWebsite = await getLatestWebsiteForOwner(user.id);
+      if (!latestWebsite || !active) {
+        return;
+      }
+
+      const latestVerification = await getLatestDomainVerification(latestWebsite.id);
+      if (!active) {
+        return;
+      }
+
+      setWebsite(latestWebsite);
+      setVerification(latestVerification);
+      setVerified(latestWebsite.ownership_status === 'verified' || latestVerification?.status === 'verified');
+    };
+
+    load().catch(() => {
+      if (active) {
+        setVerification(null);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   const handleCheck = () => {
+    if (!verification?.id || !website?.id) {
+      return;
+    }
+
     setChecking(true);
-    setTimeout(() => { setChecking(false); setVerified(true); }, 1800);
+    setLookupMessage('');
+    setLookupError('');
+    setTimeout(async () => {
+      try {
+        const result = await checkDomainVerification({
+          verificationId: verification.id,
+          websiteId: website.id,
+        });
+
+        if (result?.verification) {
+          setVerification((prev) => (prev ? { ...prev, ...result.verification } : result.verification));
+        }
+
+        if (result.matched) {
+          setVerified(true);
+          setLookupMessage('We found the TXT record and confirmed your website ownership.');
+
+          const saved = sessionStorage.getItem('crozora_biz');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            sessionStorage.setItem('crozora_biz', JSON.stringify({
+              ...parsed,
+              ownershipVerified: true,
+            }));
+          }
+        } else {
+          setLookupMessage('We checked live DNS, but the record is not visible yet. Please wait a bit longer and try again.');
+        }
+      } catch (error) {
+        setLookupError(error.message || 'We could not check DNS right now. Please try again soon.');
+      } finally {
+        setChecking(false);
+      }
+    }, 1800);
   };
 
   const handleCopy = (key, value) => {
@@ -20,10 +102,11 @@ export default function OwnershipPage() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const domain = website?.normalized_domain || 'yourdomain.com';
   const dnsRecord = [
     { key: 'type', label: 'Type', value: 'TXT' },
-    { key: 'name', label: 'Name', value: '_crozora.yourdomain.com', copyKey: 'name' },
-    { key: 'value', label: 'Value', value: 'crozora_verify_xxxxxxxx', copyKey: 'value' },
+    { key: 'name', label: 'Name', value: verification?.dns_name || `_crozora.${domain}`, copyKey: 'name' },
+    { key: 'value', label: 'Value', value: verification?.expected_value || 'crozora_verify_xxxxxxxx', copyKey: 'value' },
   ];
 
   return (
@@ -69,6 +152,14 @@ export default function OwnershipPage() {
             </div>
           </div>
 
+          <div className="mb-5 rounded-xl p-4" style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)' }}>
+            <p className="text-sm text-white font-medium mb-2">Simple version</p>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Open the place where you manage your domain, add one new TXT record, then come back here and click <span className="text-white">Check Verification</span>.
+              You do not need coding experience to complete this step.
+            </p>
+          </div>
+
           <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid rgba(59,130,246,0.15)' }}>
             {dnsRecord.map(({ key, label, value, copyKey }) => (
               <div key={key} className="flex items-center justify-between px-4 py-3" style={{
@@ -96,17 +187,29 @@ export default function OwnershipPage() {
           {!verified ? (
             <button
               onClick={handleCheck}
-              disabled={checking}
+              disabled={checking || !verification}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)' }}
             >
-              {checking ? <><RefreshCw size={14} className="animate-spin" /> Checking DNS…</> : 'Check Verification'}
+              {checking ? <><RefreshCw size={14} className="animate-spin" /> Checking live DNS...</> : 'Check Verification'}
             </button>
           ) : (
             <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
               <CheckCircle size={15} /> DNS record detected — ownership confirmed
             </div>
           )}
+          {lookupMessage ? (
+            <div className="mt-4 rounded-xl px-4 py-3 text-sm text-slate-200"
+              style={{ background: verified ? 'rgba(16,185,129,0.08)' : 'rgba(59,130,246,0.06)', border: `1px solid ${verified ? 'rgba(16,185,129,0.2)' : 'rgba(59,130,246,0.16)'}` }}>
+              {lookupMessage}
+            </div>
+          ) : null}
+          {lookupError ? (
+            <div className="mt-4 rounded-xl px-4 py-3 text-sm text-red-100"
+              style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.22)' }}>
+              {lookupError}
+            </div>
+          ) : null}
         </div>
 
         {/* DNS tip */}

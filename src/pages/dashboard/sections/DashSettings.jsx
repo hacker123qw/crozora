@@ -2,14 +2,37 @@ import { useState } from 'react';
 
 export default function DashSettings({ biz, status }) {
   const [notifs, setNotifs] = useState({ recheck: true, badge: true, security: false, marketing: false });
-  const domain = biz.url || 'tuneteachers.com';
+  const domain = biz.url || 'No website saved';
   const name = biz.name || domain;
-  const planLabel = status === 'pro' ? 'Crozora Pro — $20/month' : status === 'onetime' || status === 'approved' || status === 'not_approved' ? `One-Time Site Verification — ${domain}` : 'Free Trust Preview';
+  const formatDate = (value, fallback = '-') => {
+    if (!value) return fallback;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? fallback
+      : date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+  const ownershipValue = biz.ownershipStatus === 'verified' ? 'Verified' : biz.ownershipStatus === 'pending' ? 'Pending' : 'Not started';
+  const previewValue = biz.previewStatus === 'complete'
+    ? biz.previewResult === 'looks_promising'
+      ? 'Looks promising'
+      : biz.previewResult === 'needs_improvement'
+      ? 'Needs improvement'
+      : biz.previewResult === 'needs_closer_review'
+      ? 'Needs closer review'
+      : 'Complete'
+    : biz.previewStatus === 'running'
+    ? 'Running'
+    : 'Not started';
+  const planLabel = status === 'pro'
+    ? 'Crozora Pro - $20/month'
+    : status === 'onetime' || status === 'approved' || status === 'not_approved'
+    ? `One-Time Site Verification - ${domain}`
+    : 'Free Trust Preview';
 
   const Row = ({ label, value }) => (
     <div className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid rgba(59,130,246,0.06)' }}>
       <span className="text-xs text-slate-500">{label}</span>
-      <span className="text-xs font-medium text-white">{value || '—'}</span>
+      <span className="text-xs font-medium text-white">{value || '-'}</span>
     </div>
   );
 
@@ -19,22 +42,22 @@ export default function DashSettings({ biz, status }) {
         <p className="text-sm text-white">{label}</p>
         <p className="text-xs text-slate-500">{desc}</p>
       </div>
-      <button onClick={() => setNotifs(n => ({ ...n, [id]: !n[id] }))}
+      <button
+        type="button"
+        onClick={() => setNotifs((n) => ({ ...n, [id]: !n[id] }))}
         className="w-9 h-5 rounded-full transition-all flex-shrink-0 ml-4 relative"
-        style={{ background: notifs[id] ? 'linear-gradient(135deg, #3b82f6, #06b6d4)' : 'rgba(71,85,105,0.5)' }}>
-        <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
-          style={{ left: notifs[id] ? '19px' : '2px' }} />
+        style={{ background: notifs[id] ? 'linear-gradient(135deg, #3b82f6, #06b6d4)' : 'rgba(71,85,105,0.5)' }}
+      >
+        <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ left: notifs[id] ? '19px' : '2px' }} />
       </button>
     </div>
   );
 
-  const SectionCard = ({ title, children, actionLabel }) => (
+  const SectionCard = ({ title, children, actionLabel = '' }) => (
     <div className="glass-card rounded-2xl p-5" style={{ border: '1px solid rgba(59,130,246,0.12)' }}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-white font-semibold text-sm">{title}</h3>
-        {actionLabel && (
-          <button className="text-xs text-blue-400 hover:text-blue-300 transition-colors">{actionLabel}</button>
-        )}
+        {actionLabel ? <button type="button" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">{actionLabel}</button> : null}
       </div>
       {children}
     </div>
@@ -46,33 +69,33 @@ export default function DashSettings({ biz, status }) {
 
       <SectionCard title="Account Information" actionLabel="Edit Account">
         <Row label="Full Name" value={name} />
-        <Row label="Account Email" value={biz.email || 'owner@example.com'} />
-        <Row label="Account Created" value="April 2026" />
+        <Row label="Account Email" value={biz.email || 'Not provided'} />
+        <Row label="Account Created" value={formatDate(biz.latestVerification?.created_at, 'Recently')} />
       </SectionCard>
 
       <SectionCard title="Business Profile" actionLabel="Edit Business Info">
         <Row label="Business Name" value={name} />
-        <Row label="Business Email" value={biz.email || 'hello@example.com'} />
-        <Row label="Category" value={biz.category || 'Education'} />
-        <Row label="Service Type" value={biz.serviceType || 'Online only'} />
+        <Row label="Business Email" value={biz.email || 'Not provided'} />
+        <Row label="Category" value={biz.category || 'Not provided'} />
+        <Row label="Service Type" value={biz.serviceType || 'Not provided'} />
       </SectionCard>
 
       <SectionCard title="Website Information" actionLabel="Change Website Builder">
         <Row label="Website URL" value={domain} />
         <Row label="Normalized Domain" value={domain.replace(/^www\./, '')} />
-        <Row label="Country" value={biz.country || 'United States'} />
-        <Row label="State / Region" value={biz.state || 'California'} />
-        <Row label="City" value={biz.city || 'Los Angeles'} />
-        <Row label="Website Builder" value={biz.builder || 'WordPress'} />
+        <Row label="Country" value={biz.country || 'Not provided'} />
+        <Row label="State / Region" value={biz.state || 'Not provided'} />
+        <Row label="City" value={biz.city || 'Not provided'} />
+        <Row label="Website Builder" value={biz.builder || 'Not provided'} />
       </SectionCard>
 
       <SectionCard title="Plan Details" actionLabel="Manage Plan">
         <Row label="Current Plan" value={planLabel} />
         <Row label="Website Covered" value={domain} />
-        <Row label="Ownership Status" value="Verified" />
-        <Row label="Preview Status" value="Complete" />
-        <Row label="Last Checked" value="April 2026" />
-        <Row label="Next Recheck" value={status === 'free' ? 'Upgrade required' : 'May 2026'} />
+        <Row label="Ownership Status" value={ownershipValue} />
+        <Row label="Preview Status" value={previewValue} />
+        <Row label="Last Checked" value={formatDate(biz.lastCheckedAt, 'Not checked yet')} />
+        <Row label="Next Recheck" value={status === 'free' ? 'Upgrade required' : formatDate(biz.nextRecheckAt, 'Not scheduled')} />
       </SectionCard>
 
       <SectionCard title="Notification Preferences">
@@ -83,15 +106,13 @@ export default function DashSettings({ biz, status }) {
       </SectionCard>
 
       <SectionCard title="Security">
-        <Row label="Password" value="••••••••••" />
+        <Row label="Password" value="**********" />
         <Row label="Two-Factor Auth" value="Not enabled" />
         <div className="mt-3 space-y-2">
-          <button className="w-full py-2.5 rounded-xl text-sm font-medium text-blue-400 transition-all hover:bg-blue-500/5"
-            style={{ border: '1px solid rgba(59,130,246,0.2)' }}>
+          <button type="button" className="w-full py-2.5 rounded-xl text-sm font-medium text-blue-400 transition-all hover:bg-blue-500/5" style={{ border: '1px solid rgba(59,130,246,0.2)' }}>
             Change Password
           </button>
-          <button className="w-full py-2.5 rounded-xl text-sm font-medium text-blue-400 transition-all hover:bg-blue-500/5"
-            style={{ border: '1px solid rgba(59,130,246,0.2)' }}>
+          <button type="button" className="w-full py-2.5 rounded-xl text-sm font-medium text-blue-400 transition-all hover:bg-blue-500/5" style={{ border: '1px solid rgba(59,130,246,0.2)' }}>
             Enable Two-Factor Auth
           </button>
         </div>
@@ -100,12 +121,10 @@ export default function DashSettings({ biz, status }) {
       <div className="glass-card rounded-2xl p-5" style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
         <h3 className="text-red-400 font-semibold text-sm mb-4">Danger Zone</h3>
         <div className="space-y-2.5">
-          <button className="w-full py-2.5 rounded-xl text-sm font-medium text-red-400 transition-all hover:bg-red-500/5"
-            style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
+          <button type="button" className="w-full py-2.5 rounded-xl text-sm font-medium text-red-400 transition-all hover:bg-red-500/5" style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
             Remove This Website
           </button>
-          <button className="w-full py-2.5 rounded-xl text-sm font-medium text-red-400 transition-all hover:bg-red-500/5"
-            style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
+          <button type="button" className="w-full py-2.5 rounded-xl text-sm font-medium text-red-400 transition-all hover:bg-red-500/5" style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
             Delete Account
           </button>
         </div>

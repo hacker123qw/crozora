@@ -1,5 +1,5 @@
 import DashboardLayout from '@/components/DashboardLayout';
-import { CreditCard, CheckCircle, Download, ChevronRight } from 'lucide-react';
+import { CreditCard, Download } from 'lucide-react';
 
 const invoices = [
   { id: 'INV-001', date: 'April 1, 2026', amount: '$19.00', plan: 'Verified Badge', status: 'Paid' },
@@ -55,10 +55,10 @@ export default function BillingPage() {
           <h3 className="text-white font-bold font-space mb-4">Available Plans</h3>
           <div className="space-y-3">
             {[
-              { name: 'Free Trust Check', price: '$0', desc: 'Basic scan, pass/fail result' },
-              { name: 'Trust Report', price: '$29', desc: 'Full report + recommendations', oneTime: true },
+              { name: 'Free Trust Check', price: '$0', desc: 'Limited preview, simple result' },
+              { name: 'One-Time Verification', price: '$30', desc: 'Advanced one-site report + badge if approved', oneTime: true },
               { name: 'Verified Badge', price: '$19/mo', desc: 'Live badge + public trust page', active: true },
-            ].map(({ name, price, desc, active, oneTime }) => (
+            ].map(({ name, price, desc, active }) => (
               <div key={name} className="flex items-center justify-between p-4 rounded-xl" style={{
                 background: active ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.03)',
                 border: active ? '1px solid rgba(59,130,246,0.25)' : '1px solid rgba(59,130,246,0.08)',

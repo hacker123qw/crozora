@@ -3,8 +3,8 @@ import CrozoraNav from '@/components/CrozoraNav';
 import CrozoraFooter from '@/components/CrozoraFooter';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import {
-  Shield, CheckCircle, Globe, Lock, Star, AlertTriangle,
-  ArrowRight, Eye, ChevronRight, Search, FileText, Award, MousePointerClick, RefreshCw
+  Shield, CheckCircle, Globe, Lock,
+  ArrowRight, Eye, ChevronRight, Search, Award, MousePointerClick, RefreshCw
 } from 'lucide-react';
 
 const badgeWhyCards = [
@@ -204,7 +204,7 @@ export default function HomePage() {
                 <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', color: '#60a5fa' }}>For Owners</span>
               </div>
               {[
-                { text: 'Basic findings — One-Time $30 plan', pro: false },
+                { text: 'Advanced report — One-Time $30 plan', pro: false },
                 { text: 'Advanced score breakdown — Pro', pro: true },
                 { text: 'Improvement recommendations', pro: false },
                 { text: 'Deeper technical guidance — Pro', pro: true },

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
-import { CheckCircle, ScanLine, ChevronRight, Lock, AlertCircle, Zap } from 'lucide-react';
+import { CheckCircle, ScanLine, ChevronRight, Lock, Zap } from 'lucide-react';
 
 const scanChecks = [
   { label: 'Website security (HTTPS, certificates)' },
@@ -17,7 +17,6 @@ export default function TrustScanPage() {
   const [phase, setPhase] = useState('idle'); // idle | scanning | done
   const [progress, setProgress] = useState(0);
   const [completedChecks, setCompletedChecks] = useState([]);
-  const [result, setResult] = useState(null); // 'pass' | 'review'
 
   const startScan = () => {
     setPhase('scanning');
@@ -32,7 +31,6 @@ export default function TrustScanPage() {
         if (i === scanChecks.length - 1) {
           setTimeout(() => {
             setPhase('done');
-            setResult('pass');
           }, 500);
         }
       }, (i + 1) * 600);

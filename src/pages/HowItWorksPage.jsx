@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CrozoraNav from '@/components/CrozoraNav';
 import CrozoraFooter from '@/components/CrozoraFooter';
-import { CheckCircle, Globe, Search, Lock, Award, ChevronRight, Copy, Loader } from 'lucide-react';
+import { CheckCircle, Copy } from 'lucide-react';
 
 const platforms = ['Wix', 'Squarespace', 'WordPress', 'Shopify', 'GoDaddy', 'Webflow', 'Base44', 'Custom HTML', "Other / I don't know"];
 
@@ -17,7 +17,6 @@ const scanItems = [
 export default function HowItWorksPage() {
   const navigate = useNavigate();
   const [dnsVerified, setDnsVerified] = useState(false);
-  const [scanDone, setScanDone] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [copied, setCopied] = useState(null);
 
@@ -132,7 +131,7 @@ export default function HowItWorksPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {scanItems.map((item, i) => (
+                {scanItems.map((item) => (
                   <div key={item} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.08)' }}>
                     <CheckCircle size={15} className="text-emerald-400 flex-shrink-0" />
                     <span className="text-sm text-slate-300">{item}</span>

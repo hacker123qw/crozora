@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Shield, LayoutDashboard, ClipboardList, ScanLine, Award, AlertTriangle, Users, LogOut, Menu, X } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Overview', path: '/admin' },
@@ -22,7 +23,7 @@ const stats = [
 function AdminLayout({ children }) {
   const [open, setOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
+  const { logout } = useAuth();
   const isActive = (p) => location.pathname === p;
 
   return (
@@ -49,7 +50,7 @@ function AdminLayout({ children }) {
           ))}
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-3" style={{ borderTop: '1px solid rgba(239,68,68,0.1)' }}>
-          <button onClick={() => navigate('/')} className="sidebar-item w-full"><LogOut size={15} /> Exit Admin</button>
+          <button onClick={() => logout()} className="sidebar-item w-full"><LogOut size={15} /> Exit Admin</button>
         </div>
       </aside>
 

@@ -17,13 +17,6 @@ export default function AdminReviewQueue() {
     setBusinesses(prev => prev.map(b => b.id === id ? { ...b, review: status } : b));
   };
 
-  const getReviewStyle = (status) => {
-    if (status === 'Approved') return 'status-active';
-    if (status === 'Rejected') return 'status-expired';
-    if (status === 'Under Review') return 'status-pending';
-    return 'px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-400 border border-slate-700';
-  };
-
   return (
     <AdminLayout>
       <div className="mb-8">

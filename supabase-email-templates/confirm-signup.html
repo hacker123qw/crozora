@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirm your Crozora account</title>
+  </head>
+  <body style="margin:0;background:#07111f;font-family:Inter,Arial,sans-serif;color:#e2e8f0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#07111f;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;">
+            <tr>
+              <td style="padding-bottom:18px;text-align:center;">
+                <div style="display:inline-block;border:1px solid rgba(148,163,184,0.18);background:rgba(15,23,42,0.72);border-radius:18px;padding:16px 20px;">
+                  <span style="font-size:28px;font-weight:800;letter-spacing:-0.03em;color:#ffffff;">Crozora</span>
+                  <div style="margin-top:6px;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:#7dd3fc;">Trust Infrastructure</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="border:1px solid rgba(125,211,252,0.16);border-radius:32px;background:linear-gradient(180deg,rgba(15,23,42,0.96),rgba(8,15,31,0.98));padding:40px 36px;box-shadow:0 30px 100px rgba(2,6,23,0.5);">
+                <div style="display:inline-block;padding:8px 14px;border-radius:999px;border:1px solid rgba(125,211,252,0.2);background:rgba(125,211,252,0.1);font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#bae6fd;">
+                  Confirm your email
+                </div>
+                <h1 style="margin:22px 0 12px;font-size:40px;line-height:1.05;letter-spacing:-0.04em;color:#ffffff;">Welcome to Crozora</h1>
+                <p style="margin:0 0 22px;font-size:17px;line-height:1.8;color:#cbd5e1;">
+                  Confirm your email to activate your Crozora workspace and begin managing the trust signals your customers see.
+                </p>
+                <p style="margin:0 0 28px;font-size:15px;line-height:1.8;color:#94a3b8;">
+                  Your production sender will appear as <strong style="color:#ffffff;">support@crozora.com</strong>. If this email reached you, you are on the secure path.
+                </p>
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 28px;">
+                  <tr>
+                    <td>
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;border-radius:18px;background:linear-gradient(135deg,#38bdf8 0%,#2563eb 42%,#0f766e 100%);padding:16px 24px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;box-shadow:0 18px 40px rgba(37,99,235,0.35);">
+                        Confirm email
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <div style="border:1px solid rgba(148,163,184,0.12);border-radius:22px;background:rgba(255,255,255,0.03);padding:18px 18px 4px;">
+                  <p style="margin:0 0 14px;font-size:13px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#7dd3fc;">Why this matters</p>
+                  <p style="margin:0 0 14px;font-size:14px;line-height:1.8;color:#cbd5e1;">A confirmed account helps Crozora keep badge delivery, trust pages, and account recovery aligned with your verified identity.</p>
+                </div>
+                <p style="margin:28px 0 0;font-size:13px;line-height:1.8;color:#64748b;">
+                  If the button does not work, copy and paste this link into your browser:<br />
+                  <a href="{{ .ConfirmationURL }}" style="color:#7dd3fc;text-decoration:none;word-break:break-all;">{{ .ConfirmationURL }}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-top:18px;text-align:center;font-size:12px;line-height:1.8;color:#64748b;">
+                Crozora | Trust infrastructure for premium online businesses
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
