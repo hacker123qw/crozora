@@ -5,12 +5,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Public pages
 import HomePage from '@/pages/HomePage';
-import HowItWorksPage from '@/pages/HowItWorksPage';
-import PricingPage from '@/pages/PricingPage';
-import TrustStandardsPage from '@/pages/TrustStandardsPage';
 import AboutPage from '@/pages/AboutPage';
 import ContactPage from '@/pages/ContactPage';
-import PublicVerifyPage from '@/pages/PublicVerifyPage';
 
 // Auth pages
 import LoginPage from '@/pages/auth/LoginPage';
@@ -23,13 +19,21 @@ import TermsPage from '@/pages/legal/TermsPage';
 import PrivacyPage from '@/pages/legal/PrivacyPage';
 import DisclaimerPage from '@/pages/legal/DisclaimerPage';
 
-// Onboarding wizard
+// Onboarding
 import OnboardingWizard from '@/pages/onboarding/OnboardingWizard';
 
-// Dashboard pages
-import MainDashboard from '@/pages/dashboard/MainDashboard';
+// Dashboard — Crozora ecosystem
+import EcosystemFeed from '@/pages/dashboard/EcosystemFeed';
+import BuilderProfilePage from '@/pages/dashboard/BuilderProfilePage';
+import ProjectsPage from '@/pages/dashboard/ProjectsPage';
+import DiscoverPage from '@/pages/dashboard/DiscoverPage';
+import BuildRoomsPage from '@/pages/dashboard/BuildRoomsPage';
+import IdeasPage from '@/pages/dashboard/IdeasPage';
+import AICoBuilderPage from '@/pages/dashboard/AICoBuilderPage';
+import MarketplacePage from '@/pages/dashboard/MarketplacePage';
+import SettingsPage from '@/pages/dashboard/SettingsPage';
 
-// Admin pages
+// Admin (internal, not exposed in nav)
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminReviewQueue from '@/pages/admin/AdminReviewQueue';
 import AdminScanLogs from '@/pages/admin/AdminScanLogs';
@@ -38,7 +42,6 @@ import AdminReports from '@/pages/admin/AdminReports';
 import AdminUsers from '@/pages/admin/AdminUsers';
 
 const loginRedirect = <Navigate to="/login" replace />;
-const dashboardRedirect = (section) => <Navigate to={`/dashboard/home?section=${section}`} replace />;
 
 function App() {
   return (
@@ -47,12 +50,8 @@ function App() {
         <Routes>
           {/* Public */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/how-it-works" element={<HowItWorksPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/trust-standards" element={<TrustStandardsPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
-          <Route path="/verify/:businessId" element={<PublicVerifyPage />} />
 
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
@@ -66,22 +65,20 @@ function App() {
           <Route path="/disclaimer" element={<DisclaimerPage />} />
 
           <Route element={<ProtectedRoute unauthenticatedElement={loginRedirect} />}>
-            {/* Onboarding wizard, also the default entry for new users */}
             <Route path="/onboarding" element={<OnboardingWizard />} />
             <Route path="/start" element={<OnboardingWizard />} />
 
-            {/* Dashboard */}
-            <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
-            <Route path="/dashboard/home" element={<MainDashboard />} />
-            <Route path="/dashboard/add-business" element={dashboardRedirect('websites')} />
-            <Route path="/dashboard/ownership" element={dashboardRedirect('websites')} />
-            <Route path="/dashboard/scan" element={dashboardRedirect('report')} />
-            <Route path="/dashboard/report" element={dashboardRedirect('report')} />
-            <Route path="/dashboard/apply" element={dashboardRedirect('report')} />
-            <Route path="/dashboard/badge" element={dashboardRedirect('badge')} />
-            <Route path="/dashboard/public-preview" element={dashboardRedirect('public')} />
-            <Route path="/dashboard/billing" element={dashboardRedirect('billing')} />
-            <Route path="/dashboard/settings" element={dashboardRedirect('settings')} />
+            {/* Ecosystem dashboard */}
+            <Route path="/dashboard" element={<Navigate to="/dashboard/feed" replace />} />
+            <Route path="/dashboard/feed" element={<EcosystemFeed />} />
+            <Route path="/dashboard/profile" element={<BuilderProfilePage />} />
+            <Route path="/dashboard/projects" element={<ProjectsPage />} />
+            <Route path="/dashboard/discover" element={<DiscoverPage />} />
+            <Route path="/dashboard/build-rooms" element={<BuildRoomsPage />} />
+            <Route path="/dashboard/ideas" element={<IdeasPage />} />
+            <Route path="/dashboard/ai" element={<AICoBuilderPage />} />
+            <Route path="/dashboard/marketplace" element={<MarketplacePage />} />
+            <Route path="/dashboard/settings" element={<SettingsPage />} />
 
             {/* Admin */}
             <Route path="/admin" element={<AdminDashboard />} />
