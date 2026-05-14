@@ -61,7 +61,7 @@ export default function CrozoraNav() {
               boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)',
             }}
           >
-            Enter Crozora
+            Sign Up
             <ArrowRight size={14} />
           </button>
         </div>
@@ -86,7 +86,7 @@ export default function CrozoraNav() {
             className="w-full py-2.5 rounded-lg text-sm font-semibold text-white"
             style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' }}
           >
-            Enter Crozora
+            Sign Up
           </button>
         </div>
       )}

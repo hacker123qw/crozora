@@ -9,6 +9,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { buildPublicSiteUrl } from '@/lib/site-url';
 import {
   AuthButton,
   AuthInput,
@@ -23,12 +24,13 @@ export default function SignupPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [submitError, setSubmitError] = useState('');
 
-  const redirectTo = useMemo(() => `${window.location.origin}/verify-email`, []);
+  // Use VITE_SITE_URL when set so redirect works from any Vercel preview URL
+  const redirectTo = useMemo(() => buildPublicSiteUrl('/verify-email'), []);
 
   useEffect(() => {
     if (authChecked && isAuthenticated) {
       const hasBiz = !!sessionStorage.getItem('crozora_biz');
-      navigate(hasBiz ? '/dashboard/home' : '/onboarding', { replace: true });
+      navigate(hasBiz ? '/dashboard/feed' : '/onboarding', { replace: true });
     }
   }, [authChecked, isAuthenticated, navigate]);
 
