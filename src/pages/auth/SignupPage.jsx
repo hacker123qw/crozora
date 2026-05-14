@@ -9,7 +9,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { buildPublicSiteUrl } from '@/lib/site-url';
+import { getExplicitSiteUrl } from '@/lib/site-url';
 import {
   AuthButton,
   AuthInput,
@@ -24,8 +24,13 @@ export default function SignupPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [submitError, setSubmitError] = useState('');
 
-  // Use VITE_SITE_URL when set so redirect works from any Vercel preview URL
-  const redirectTo = useMemo(() => buildPublicSiteUrl('/verify-email'), []);
+  // Only pass emailRedirectTo when VITE_SITE_URL is explicitly configured.
+  // Sending window.location.origin risks a URL not in Supabase's allowed
+  // redirect list, which causes GoTrue to reject the signup entirely.
+  const redirectTo = useMemo(() => {
+    const base = getExplicitSiteUrl();
+    return base ? `${base}/verify-email` : undefined;
+  }, []);
 
   useEffect(() => {
     if (authChecked && isAuthenticated) {

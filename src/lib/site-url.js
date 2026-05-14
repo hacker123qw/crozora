@@ -26,3 +26,12 @@ export function buildPublicSiteUrl(pathname = '') {
   const cleanPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
   return `${baseUrl}${cleanPath}`;
 }
+
+// Returns only the explicitly configured site URL (VITE_SITE_URL / VITE_PUBLIC_SITE_URL).
+// Never falls back to window.location.origin — use this for Supabase emailRedirectTo
+// so we never send an unrecognised URL that GoTrue will reject.
+export function getExplicitSiteUrl() {
+  return normalizeBaseUrl(
+    import.meta.env.VITE_SITE_URL || import.meta.env.VITE_PUBLIC_SITE_URL || ''
+  );
+}
