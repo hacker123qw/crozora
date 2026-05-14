@@ -121,7 +121,7 @@ export default function HomePage() {
                 background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
                 boxShadow: '0 0 40px rgba(59,130,246,0.3)',
               }}>
-              Enter Crozora
+              Sign Up
               <ArrowRight size={18} />
             </button>
             <button
@@ -370,7 +370,7 @@ export default function HomePage() {
                 background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
                 boxShadow: '0 0 50px rgba(59,130,246,0.3)',
               }}>
-              Enter Crozora
+              Sign Up
               <ArrowRight size={20} />
             </button>
             <button
