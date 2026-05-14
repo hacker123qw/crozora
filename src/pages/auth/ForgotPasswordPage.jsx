@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { buildPublicSiteUrl } from '@/lib/site-url';
+import { getExplicitSiteUrl } from '@/lib/site-url';
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,8 +22,11 @@ export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  // Use VITE_SITE_URL when set so redirect works from any Vercel preview URL
-  const redirectTo = useMemo(() => `${buildPublicSiteUrl('/verify-email')}?mode=recovery`, []);
+  // Only pass redirectTo when VITE_SITE_URL is explicitly configured.
+  const redirectTo = useMemo(() => {
+    const base = getExplicitSiteUrl();
+    return base ? `${base}/verify-email?mode=recovery` : undefined;
+  }, []);
 
   const handleReset = async () => {
     setSubmitError('');
