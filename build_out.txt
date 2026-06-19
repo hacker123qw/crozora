@@ -1,0 +1,4 @@
+
+> crozora-trust-seal@0.0.0 build
+> vite build
+
