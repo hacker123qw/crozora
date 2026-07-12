@@ -32,6 +32,26 @@ export default async function handler(req, res) {
     }
     const html = await pageRes.text();
 
+    // Debug probe: /api/stream-url?debug=1 reports exactly what THIS server received,
+    // so we can tell whether EarthCam serves datacenter IPs a different/blocked page.
+    if (req.query?.debug) {
+      const lower = html.toLowerCase();
+      return res.status(200).json({
+        status: pageRes.status,
+        htmlLength: html.length,
+        has_feed_50683: html.includes('50683'),
+        has_streampath: html.includes('html5_streampath'),
+        has_fecnetwork: html.includes('fecnetwork'),
+        looksBlocked:
+          lower.includes('access denied') ||
+          lower.includes('captcha') ||
+          lower.includes('cf-browser-verification') ||
+          lower.includes('are you a human') ||
+          lower.includes('enable javascript to'),
+        head: html.slice(0, 600),
+      });
+    }
+
     // Streaming domain (constant across cams, but read it live in case it changes).
     const domMatch = html.match(/"html5_streamingdomain":"(https:[^"]*earthcam[^"]*)"/);
     const domain = unescapeJson(domMatch?.[1]) ?? FALLBACK_DOMAIN;
