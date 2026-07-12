@@ -42,17 +42,22 @@ export default function App() {
       return;
     }
 
+    // EarthCam's CDN blocks non-earthcam Referers, so we cannot load the stream
+    // directly in the browser. Route it through our same-origin proxy, which adds
+    // the earthcam Referer server-side. This also keeps the video same-origin so
+    // canvas frame-capture works without CORS tainting.
+    const proxied = `/api/proxy?u=${encodeURIComponent(streamUrl)}`;
+
     setStreamStatus('Connecting…');
     hlsRef.current?.destroy();
 
     if (Hls.isSupported()) {
       const hls = new Hls({
-        xhrSetup: (xhr) => { xhr.withCredentials = false; },
         enableWorker: true,
         lowLatencyMode: true,
       });
       hlsRef.current = hls;
-      hls.loadSource(streamUrl);
+      hls.loadSource(proxied);
       hls.attachMedia(videoRef.current);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -70,7 +75,7 @@ export default function App() {
         }
       });
     } else if (videoRef.current?.canPlayType('application/vnd.apple.mpegurl')) {
-      videoRef.current.src = streamUrl;
+      videoRef.current.src = proxied;
       videoRef.current.crossOrigin = 'anonymous';
       videoRef.current.addEventListener('loadedmetadata', () => {
         setStreamReady(true);
