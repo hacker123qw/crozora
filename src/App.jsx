@@ -46,7 +46,10 @@ export default function App() {
     // directly in the browser. Route it through our same-origin proxy, which adds
     // the earthcam Referer server-side. This also keeps the video same-origin so
     // canvas frame-capture works without CORS tainting.
-    const proxied = `/api/proxy?u=${encodeURIComponent(streamUrl)}`;
+    // base64url (not percent-encoding): the signed token's %2B/%2F would otherwise
+    // get corrupted by URL normalization / auto-decoding. Must match the proxy.
+    const b64url = btoa(streamUrl).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const proxied = `/api/proxy?u=${b64url}`;
 
     setStreamStatus('Connecting…');
     hlsRef.current?.destroy();

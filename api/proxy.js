@@ -6,9 +6,10 @@
 // serverless proxy fetches upstream WITH the earthcam Referer and streams the
 // bytes back same-origin — which also un-taints the <video> for canvas capture.
 //
-// Flow: browser -> /api/proxy?u=<encoded earthcam url> -> earthcam CDN
-//   - .m3u8 manifests: fetched, every URL inside rewritten back through /api/proxy
-//   - .ts segments: streamed straight through
+// The target URL travels in ?u= as base64url (NOT percent-encoding): EarthCam's
+// signed token contains %2B/%2F which both `new URL()` normalization and the
+// platform's automatic query-decoding would corrupt. base64url has no %, +, /,
+// or = characters, so it round-trips untouched.
 //
 // NOTE: all video bandwidth flows through Vercel. Fine for v1/one feed; for scale
 // we'd move to an edge/media layer. Host allowlist prevents open-proxy abuse.
@@ -23,28 +24,40 @@ const UPSTREAM_HEADERS = {
   Accept: '*/*',
 };
 
-const wrap = (absoluteUrl) => `/api/proxy?u=${encodeURIComponent(absoluteUrl)}`;
+const b64urlEncode = (s) =>
+  Buffer.from(s, 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 
-// Rewrite every URI in an m3u8 (plain segment lines + URI="..." attributes) to
-// route back through this proxy, resolving relatives against the manifest base.
+const b64urlDecode = (s) => {
+  let t = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (t.length % 4) t += '=';
+  return Buffer.from(t, 'base64').toString('utf8');
+};
+
+const wrap = (absoluteUrl) => `/api/proxy?u=${b64urlEncode(absoluteUrl)}`;
+
+// Resolve a manifest-relative reference WITHOUT touching its query string, so the
+// signed token survives byte-for-byte (new URL().href would rewrite %2B -> +).
+function resolveUrl(ref, manifestUrl) {
+  if (/^https?:\/\//i.test(ref)) return ref;
+  const basePath = manifestUrl.split('?')[0];
+  const dir = basePath.slice(0, basePath.lastIndexOf('/') + 1);
+  return dir + ref; // ref keeps its own ?t=...&td=... intact
+}
+
 function rewriteManifest(text, manifestUrl) {
   return text
     .split('\n')
     .map((line) => {
       const trimmed = line.trim();
       if (!trimmed) return line;
-
       if (trimmed.startsWith('#')) {
-        // Rewrite URI="..." inside tags (e.g. EXT-X-KEY, EXT-X-MAP, EXT-X-MEDIA)
-        return line.replace(/URI="([^"]+)"/g, (_m, uri) => {
-          const abs = new URL(uri, manifestUrl).href;
-          return `URI="${wrap(abs)}"`;
-        });
+        return line.replace(/URI="([^"]+)"/g, (_m, uri) => `URI="${wrap(resolveUrl(uri, manifestUrl))}"`);
       }
-
-      // Plain URI line (a chunklist or a segment)
-      const abs = new URL(trimmed, manifestUrl).href;
-      return wrap(abs);
+      return wrap(resolveUrl(trimmed, manifestUrl));
     })
     .join('\n');
 }
@@ -57,7 +70,7 @@ export default async function handler(req, res) {
 
   let target;
   try {
-    target = decodeURIComponent(String(u));
+    target = b64urlDecode(u);
   } catch {
     return res.status(400).json({ error: 'bad u param' });
   }
