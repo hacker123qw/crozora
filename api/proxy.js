@@ -1,0 +1,95 @@
+// HLS proxy for EarthCam feeds.
+//
+// EarthCam's CDN enforces Referer-based hotlink protection: it only serves the
+// manifest/segments when the request claims Referer: earthcam.com. A browser
+// cannot forge a cross-origin Referer, so it gets 403 on every segment. This
+// serverless proxy fetches upstream WITH the earthcam Referer and streams the
+// bytes back same-origin — which also un-taints the <video> for canvas capture.
+//
+// Flow: browser -> /api/proxy?u=<encoded earthcam url> -> earthcam CDN
+//   - .m3u8 manifests: fetched, every URL inside rewritten back through /api/proxy
+//   - .ts segments: streamed straight through
+//
+// NOTE: all video bandwidth flows through Vercel. Fine for v1/one feed; for scale
+// we'd move to an edge/media layer. Host allowlist prevents open-proxy abuse.
+
+const ALLOWED_HOST = /^https:\/\/videos-\d+\.earthcam\.com\//;
+
+const UPSTREAM_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  Referer: 'https://www.earthcam.com/',
+  Origin: 'https://www.earthcam.com',
+  Accept: '*/*',
+};
+
+const wrap = (absoluteUrl) => `/api/proxy?u=${encodeURIComponent(absoluteUrl)}`;
+
+// Rewrite every URI in an m3u8 (plain segment lines + URI="..." attributes) to
+// route back through this proxy, resolving relatives against the manifest base.
+function rewriteManifest(text, manifestUrl) {
+  return text
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return line;
+
+      if (trimmed.startsWith('#')) {
+        // Rewrite URI="..." inside tags (e.g. EXT-X-KEY, EXT-X-MAP, EXT-X-MEDIA)
+        return line.replace(/URI="([^"]+)"/g, (_m, uri) => {
+          const abs = new URL(uri, manifestUrl).href;
+          return `URI="${wrap(abs)}"`;
+        });
+      }
+
+      // Plain URI line (a chunklist or a segment)
+      const abs = new URL(trimmed, manifestUrl).href;
+      return wrap(abs);
+    })
+    .join('\n');
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const u = req.query?.u;
+  if (!u) return res.status(400).json({ error: 'missing u param' });
+
+  let target;
+  try {
+    target = decodeURIComponent(String(u));
+  } catch {
+    return res.status(400).json({ error: 'bad u param' });
+  }
+
+  if (!ALLOWED_HOST.test(target)) {
+    return res.status(403).json({ error: 'host not allowed' });
+  }
+
+  try {
+    const upstream = await fetch(target, { headers: UPSTREAM_HEADERS });
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: `upstream ${upstream.status}` });
+    }
+
+    const contentType = upstream.headers.get('content-type') || '';
+    const isManifest =
+      target.split('?')[0].endsWith('.m3u8') || contentType.includes('mpegurl');
+
+    if (isManifest) {
+      const text = await upstream.text();
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).send(rewriteManifest(text, target));
+    }
+
+    // Binary segment (.ts) — stream bytes straight through
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.setHeader('Content-Type', contentType || 'video/MP2T');
+    res.setHeader('Cache-Control', 'public, max-age=2');
+    return res.status(200).send(buf);
+  } catch (err) {
+    console.error('proxy error:', err);
+    return res.status(502).json({ error: err.message ?? 'proxy failed' });
+  }
+}
