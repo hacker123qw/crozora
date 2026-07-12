@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-const STREAM_URL = 'https://videos-3.earthcam.com/fecnetwork/50683.flv/playlist.m3u8';
 const CAMERA_NAME = 'Times Square North 4K';
 const CAMERA_LOCATION = 'New York City, NY';
 const CAPTURE_WIDTH = 640;
@@ -22,56 +21,78 @@ export default function App() {
   const [cadence, setCadence] = useState(DEFAULT_CADENCE);
   const [streamReady, setStreamReady] = useState(false);
   const [streamError, setStreamError] = useState('');
+  const [streamStatus, setStreamStatus] = useState('Fetching stream URL…');
   const [apiError, setApiError] = useState('');
   const [analysisCount, setAnalysisCount] = useState(0);
 
-  // Boot HLS.js and attach to video element
+  // Fetch a fresh signed stream URL from our serverless proxy, then boot HLS.js.
+  // On fatal HLS error, refetch URL and reinitialise — handles token expiry automatically.
+  const bootHls = useCallback(async (Hls) => {
+    setStreamError('');
+    setStreamStatus('Fetching stream URL…');
+
+    let streamUrl;
+    try {
+      const res = await fetch('/api/stream-url');
+      const json = await res.json();
+      if (!res.ok || !json.streamUrl) throw new Error(json.error ?? 'No URL returned');
+      streamUrl = json.streamUrl;
+    } catch (err) {
+      setStreamError(`Could not get stream URL: ${err.message}`);
+      return;
+    }
+
+    setStreamStatus('Connecting…');
+    hlsRef.current?.destroy();
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        xhrSetup: (xhr) => { xhr.withCredentials = false; },
+        enableWorker: true,
+        lowLatencyMode: true,
+      });
+      hlsRef.current = hls;
+      hls.loadSource(streamUrl);
+      hls.attachMedia(videoRef.current);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setStreamReady(true);
+        setStreamStatus('');
+        videoRef.current?.play().catch(() => {});
+      });
+
+      hls.on(Hls.Events.ERROR, (_evt, data) => {
+        if (data.fatal) {
+          // Token likely expired — refetch and reinitialise
+          setStreamReady(false);
+          setStreamStatus('Refreshing stream…');
+          setTimeout(() => bootHls(Hls), 2000);
+        }
+      });
+    } else if (videoRef.current?.canPlayType('application/vnd.apple.mpegurl')) {
+      videoRef.current.src = streamUrl;
+      videoRef.current.crossOrigin = 'anonymous';
+      videoRef.current.addEventListener('loadedmetadata', () => {
+        setStreamReady(true);
+        setStreamStatus('');
+        videoRef.current?.play().catch(() => {});
+      }, { once: true });
+    } else {
+      setStreamError('HLS is not supported in this browser.');
+    }
+  }, []);
+
   useEffect(() => {
-    let hls;
-
-    const boot = async () => {
-      const { default: Hls } = await import('hls.js');
-
-      if (Hls.isSupported()) {
-        hls = new Hls({
-          xhrSetup: (xhr) => { xhr.withCredentials = false; },
-          enableWorker: true,
-          lowLatencyMode: true,
-        });
-        hlsRef.current = hls;
-        hls.loadSource(STREAM_URL);
-        hls.attachMedia(videoRef.current);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          setStreamReady(true);
-          videoRef.current?.play().catch(() => {});
-        });
-
-        hls.on(Hls.Events.ERROR, (_evt, data) => {
-          if (data.fatal) {
-            setStreamError(`Stream error: ${data.details}`);
-          }
-        });
-      } else if (videoRef.current?.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari native HLS
-        videoRef.current.src = STREAM_URL;
-        videoRef.current.crossOrigin = 'anonymous';
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          setStreamReady(true);
-          videoRef.current?.play().catch(() => {});
-        });
-      } else {
-        setStreamError('HLS is not supported in this browser.');
-      }
-    };
-
-    boot();
-
+    let Hls;
+    import('hls.js').then(({ default: H }) => {
+      Hls = H;
+      bootHls(Hls);
+    });
     return () => {
-      hls?.destroy();
+      hlsRef.current?.destroy();
       hlsRef.current = null;
     };
-  }, []);
+  }, [bootHls]);
 
   // Capture a frame and send to /api/analyze
   const captureAndAnalyze = useCallback(async () => {
@@ -179,7 +200,7 @@ export default function App() {
             {!streamReady && !streamError && (
               <div style={styles.videoOverlay}>
                 <div style={styles.loadingSpinner} />
-                <span style={styles.loadingText}>Connecting to stream…</span>
+                <span style={styles.loadingText}>{streamStatus || 'Connecting…'}</span>
               </div>
             )}
             {streamError && (
